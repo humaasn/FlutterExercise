@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:carousel_slider/carousel_slider.dart';
@@ -17,24 +18,33 @@ class MyApp extends StatefulWidget {
 }
 
 class MyAppState extends State<MyApp> {
-  int _currentIndex = 0;
+  int _cur = 0;
+  late double pageOffset;
+
+  // ignore: prefer_final_fields
+  PageController _controller = PageController(initialPage: 0, viewportFraction: 0.7);
+  
 
   @override
   void initState() {
     super.initState();
-    loadData();
+
+    Timer.periodic(Duration(seconds: 2), (Timer timer) {
+      if (_cur < 2) {
+        _cur++;
+      } else {
+        _cur = 0;
+      }
+
+      _controller.animateToPage(
+        _cur,
+        duration: Duration(milliseconds: 350),
+        curve: Curves.easeIn,
+      );
+    });
   }
 
-  loadData() async {
-    var dataJson = await rootBundle.loadString("assets/json/test.json");
-    var decodeData = jsonDecode(dataJson);
-    var productData = decodeData["images"];
-
-    Data.items = List.from(productData)
-        .map<Item>((item) => Item.fromJson(item))
-        .toList();
-    setState(() {});
-  }
+ 
 
   @override
   Widget build(BuildContext context) {
@@ -43,28 +53,72 @@ class MyAppState extends State<MyApp> {
         centerTitle: true,
         title: Text("Test App"),
       ),
-      body: Container(
-        child: CarouselSlider(
-          options: CarouselOptions(
-            autoPlay: true,
-            //reverse: true,
-            scrollDirection: Axis.horizontal,
-            //enableInfiniteScroll: false,
-            //viewportFraction: 0.33,
-            onPageChanged: (index, reason){
-              _currentIndex = index;
-            }
-          ),
-          items: Data.items.map((item) => Container(
-            width: 300.0,
-            height: 300.0,
-            child: Image.network(item.url,
+      body: Center(
+        child: Column(
+          children: [
+            Container(
+              width:300,
+              height: 400,
+        child: FutureBuilder(
+          future: DefaultAssetBundle.of(context).loadString('assets/json/test.json'),
+          builder: (context, snapshot) {
+          // Decode the JSON
+          var new_data = json.decode(snapshot.data.toString());
+    
+        return PageView.builder(
+          controller: _controller,
+          onPageChanged: (num) {
+            setState(() {
+              _cur = num;
+              print(_cur);
+            });
+          },
+          itemBuilder: (BuildContext context, int index) {
+            return Container(
               width: 200,
-              height: 300,
-            )
-          )).toList(),
-        ),
+              height: 200,
+              child: Padding(
+                padding: const EdgeInsets.only(
+                  right: 30
+                ),
+                child: Image.network(new_data[index]['url']),
+              ),
+
+            );
+          },
+          itemCount: new_data == null ? 0 : new_data.length,
+          
+        );
+          }
       ),
+      ),
+      Row(children: [
+        IconButton(
+          onPressed: (){
+            setState(() {
+              _controller.previousPage(duration: Duration(milliseconds: 0), curve: Curves.ease);
+            });
+          }, 
+          icon: Icon(Icons.arrow_back)
+          ),
+
+          IconButton(
+          onPressed: (){
+            setState(() {
+              _controller.nextPage(duration: Duration(milliseconds: 1), curve: Curves.ease);
+              
+            });
+          }, 
+          icon: Icon(Icons.arrow_forward_ios_outlined)
+          ),
+
+          
+      ],)
+
+          ],
+
+        ),
+      )
     );
   }
 }
